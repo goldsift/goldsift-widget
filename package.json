@@ -37,8 +37,8 @@
     "wait-on": "^7.0.1"
   },
   "build": {
-    "appId": "com.binance-widget.app",
-    "productName": "Binance Widget",
+    "appId": "com.goldsift-widget.app",
+    "productName": "GoldSift Widget",
     "directories": {
       "output": "dist"
     },
@@ -48,11 +48,17 @@
       "node_modules/**/*"
     ],
     "mac": {
+      "icon": "icons/icon.icns",
       "category": "public.app-category.finance",
       "target": "dmg"
     },
     "win": {
+      "icon": "icons/icon-512.png",
       "target": "nsis"
+    },
+    "linux": {
+      "icon": "icons/icon-512.png",
+      "target": "AppImage"
     }
   },
   "browserslist": {
