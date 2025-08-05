@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交易监控 - UI原型</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .widget-container {
+            width: 280px;
+            background: #fafbfc;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: height 0.3s ease;
+        }
+
+        /* 顶部控制栏 */
+        .control-bar {
+            height: 40px;
+            background: #ffffff;
+            border-bottom: 1px solid #e8eaed;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 8px;
+        }
+
+        .mode-switch {
+            display: flex;
+            background: #f1f3f4;
+            border-radius: 16px;
+            padding: 2px;
+        }
+
+        .mode-button {
+            padding: 4px 12px;
+            border: none;
+            background: transparent;
+            border-radius: 14px;
+            font-size: 12px;
+            color: #5f6368;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mode-button.active {
+            background: #1a73e8;
+            color: white;
+        }
+
+        .search-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 28px;
+            border: 1px solid #e8eaed;
+            border-radius: 14px;
+            padding: 0 32px 0 12px;
+            font-size: 12px;
+            outline: none;
+            background: #ffffff;
+        }
+
+        .search-input:focus {
+            border-color: #1a73e8;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #5f6368;
+            font-size: 12px;
+        }
+
+        .add-button {
+            width: 24px;
+            height: 24px;
+            border: 1px solid #e8eaed;
+            border-radius: 12px;
+            background: white;
+            color: #1a73e8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .add-button:hover {
+            background: #f8f9fa;
+        }
+
+        /* 交易对卡片容器 */
+        .trading-pairs-container {
+            padding: 8px;
+        }
+
+        /* 简洁模式卡片 */
+        .trading-pair-card {
+            background: white;
+            margin-bottom: 4px;
+            border-radius: 6px;
+            border: 1px solid #e8eaed;
+            padding: 8px 12px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .trading-pair-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .trading-pair-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* 简洁模式样式 */
+        .simple-mode .trading-pair-card {
+            height: 44px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .simple-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pair-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: #3c4043;
+        }
+
+        .price-info {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .price {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .trend-arrow {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .simple-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #5f6368;
+        }
+
+        .change-percent {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* 专业模式样式 */
+        .professional-mode .trading-pair-card {
+            height: 104px;
+            padding: 8px 12px;
+        }
+
+        .professional-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .professional-price-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-container {
+            height: 60px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #e8eaed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mini-chart {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #f8f9fa 25%, transparent 25%), 
+                        linear-gradient(-45deg, #f8f9fa 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #f8f9fa 75%), 
+                        linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
+            background-size: 8px 8px;
+            background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+            opacity: 0.3;
+        }
+
+        .chart-placeholder {
+            position: absolute;
+            color: #9aa0a6;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        /* 价格颜色 */
+        .price-up {
+            color: #137333;
+        }
+
+        .price-down {
+            color: #d93025;
+        }
+
+        .change-up {
+            color: #137333;
+            background: #e6f4ea;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+
+        .change-down {
+            color: #d93025;
+            background: #fce8e6;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+
+        /* 下拉选择器 */
+        .dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e8eaed;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .dropdown.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        /* 删除按钮 */
+        .delete-button {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 16px;
+            height: 16px;
+            border: none;
+            background: #f1f3f4;
+            color: #5f6368;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 10px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .trading-pair-card:hover .delete-button {
+            display: flex;
+        }
+
+        .delete-button:hover {
+            background: #e8eaed;
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-container">
+        <!-- 顶部控制栏 -->
+        <div class="control-bar">
+            <div class="mode-switch">
+                <button class="mode-button active" data-mode="simple">简洁</button>
+                <button class="mode-button" data-mode="professional">专业</button>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="搜索交易对..." />
+                <span class="search-icon">🔍</span>
+                
+                <!-- 下拉选择器 -->
+                <div class="dropdown" id="dropdown">
+                    <div class="dropdown-item" data-pair="BTC/USDT">BTC/USDT - Bitcoin</div>
+                    <div class="dropdown-item" data-pair="ETH/USDT">ETH/USDT - Ethereum</div>
+                    <div class="dropdown-item" data-pair="SOL/USDT">SOL/USDT - Solana</div>
+                    <div class="dropdown-item" data-pair="ADA/USDT">ADA/USDT - Cardano</div>
+                    <div class="dropdown-item" data-pair="DOT/USDT">DOT/USDT - Polkadot</div>
+                    <div class="dropdown-item" data-pair="LINK/USDT">LINK/USDT - Chainlink</div>
+                </div>
+            </div>
+            
+            <button class="add-button" id="addButton">+</button>
+        </div>
+
+        <!-- 交易对展示区域 -->
+        <div class="trading-pairs-container simple-mode" id="tradingPairsContainer">
+            <!-- 默认显示的交易对 -->
+            <div class="trading-pair-card" data-pair="BTC/USDT">
+                <button class="delete-button">×</button>
+                
+                <!-- 简洁模式内容 -->
+                <div class="simple-content">
+                    <div class="simple-header">
+                        <span class="pair-name">BTC/USDT</span>
+                        <div class="price-info">
+                            <span class="price price-up">$43,250.50</span>
+                            <span class="trend-arrow price-up">↗</span>
+                        </div>
+                    </div>
+                    <div class="simple-footer">
+                        <span class="pair-full-name">Bitcoin</span>
+                        <span class="change-percent change-up">+2.5% 24h</span>
+                    </div>
+                </div>
+
+                <!-- 专业模式内容 -->
+                <div class="professional-content" style="display: none;">
+                    <div class="professional-header">
+                        <span class="pair-name">BTC/USDT</span>
+                        <div class="professional-price-info">
+                            <span class="price price-up">$43,250.50</span>
+                            <span class="trend-arrow price-up">↗</span>
+                            <span class="change-percent change-up">+2.5%</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="mini-chart"></div>
+                        <div class="chart-placeholder">1分钟K线图<br><small>模拟数据</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="trading-pair-card" data-pair="ETH/USDT">
+                <button class="delete-button">×</button>
+                
+                <!-- 简洁模式内容 -->
+                <div class="simple-content">
+                    <div class="simple-header">
+                        <span class="pair-name">ETH/USDT</span>
+                        <div class="price-info">
+                            <span class="price price-down">$2,650.30</span>
+                            <span class="trend-arrow price-down">↘</span>
+                        </div>
+                    </div>
+                    <div class="simple-footer">
+                        <span class="pair-full-name">Ethereum</span>
+                        <span class="change-percent change-down">-1.2% 24h</span>
+                    </div>
+                </div>
+
+                <!-- 专业模式内容 -->
+                <div class="professional-content" style="display: none;">
+                    <div class="professional-header">
+                        <span class="pair-name">ETH/USDT</span>
+                        <div class="professional-price-info">
+                            <span class="price price-down">$2,650.30</span>
+                            <span class="trend-arrow price-down">↘</span>
+                            <span class="change-percent change-down">-1.2%</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="mini-chart"></div>
+                        <div class="chart-placeholder">1分钟K线图<br><small>模拟数据</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟数据
+        const mockData = {
+            'BTC/USDT': { price: 43250.50, change: 2.5, trend: 'up', name: 'Bitcoin' },
+            'ETH/USDT': { price: 2650.30, change: -1.2, trend: 'down', name: 'Ethereum' },
+            'SOL/USDT': { price: 98.45, change: 5.8, trend: 'up', name: 'Solana' },
+            'ADA/USDT': { price: 0.52, change: -0.8, trend: 'down', name: 'Cardano' },
+            'DOT/USDT': { price: 7.23, change: 3.2, trend: 'up', name: 'Polkadot' },
+            'LINK/USDT': { price: 14.68, change: 1.9, trend: 'up', name: 'Chainlink' }
+        };
+
+        let currentMode = 'simple';
+        let selectedPairs = ['BTC/USDT', 'ETH/USDT'];
+
+        // DOM 元素
+        const container = document.getElementById('tradingPairsContainer');
+        const searchInput = document.querySelector('.search-input');
+        const dropdown = document.getElementById('dropdown');
+        const addButton = document.getElementById('addButton');
+        const modeButtons = document.querySelectorAll('.mode-button');
+
+        // 模式切换
+        modeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const newMode = button.dataset.mode;
+                if (newMode === currentMode) return;
+
+                // 更新按钮状态
+                modeButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                // 切换模式
+                currentMode = newMode;
+                container.className = `trading-pairs-container ${newMode}-mode`;
+
+                // 切换内容显示
+                const cards = container.querySelectorAll('.trading-pair-card');
+                cards.forEach(card => {
+                    const simpleContent = card.querySelector('.simple-content');
+                    const professionalContent = card.querySelector('.professional-content');
+                    
+                    if (newMode === 'simple') {
+                        simpleContent.style.display = 'block';
+                        professionalContent.style.display = 'none';
+                    } else {
+                        simpleContent.style.display = 'none';
+                        professionalContent.style.display = 'block';
+                    }
+                });
+
+                updateContainerHeight();
+            });
+        });
+
+        // 搜索功能
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const items = dropdown.querySelectorAll('.dropdown-item');
+            let hasVisible = false;
+
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    item.style.display = 'block';
+                    hasVisible = true;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            dropdown.classList.toggle('show', query.length > 0 && hasVisible);
+        });
+
+        // 点击外部关闭下拉
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        // 添加交易对
+        dropdown.addEventListener('click', (e) => {
+            if (e.target.classList.contains('dropdown-item')) {
+                const pair = e.target.dataset.pair;
+                if (!selectedPairs.includes(pair)) {
+                    selectedPairs.push(pair);
+                    addTradingPairCard(pair);
+                    updateContainerHeight();
+                }
+                dropdown.classList.remove('show');
+                searchInput.value = '';
+            }
+        });
+
+        // 删除交易对
+        container.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-button')) {
+                const card = e.target.closest('.trading-pair-card');
+                const pair = card.dataset.pair;
+                selectedPairs = selectedPairs.filter(p => p !== pair);
+                card.remove();
+                updateContainerHeight();
+            }
+        });
+
+        // 添加交易对卡片
+        function addTradingPairCard(pair) {
+            const data = mockData[pair];
+            const trendClass = data.trend === 'up' ? 'price-up' : 'price-down';
+            const changeClass = data.trend === 'up' ? 'change-up' : 'change-down';
+            const arrow = data.trend === 'up' ? '↗' : '↘';
+            const changeSign = data.change > 0 ? '+' : '';
+
+            const cardHTML = `
+                <div class="trading-pair-card" data-pair="${pair}">
+                    <button class="delete-button">×</button>
+                    
+                    <div class="simple-content" style="${currentMode === 'professional' ? 'display: none;' : ''}">
+                        <div class="simple-header">
+                            <span class="pair-name">${pair}</span>
+                            <div class="price-info">
+                                <span class="price ${trendClass}">$${data.price.toLocaleString()}</span>
+                                <span class="trend-arrow ${trendClass}">${arrow}</span>
+                            </div>
+                        </div>
+                        <div class="simple-footer">
+                            <span class="pair-full-name">${data.name}</span>
+                            <span class="change-percent ${changeClass}">${changeSign}${data.change}% 24h</span>
+                        </div>
+                    </div>
+
+                    <div class="professional-content" style="${currentMode === 'simple' ? 'display: none;' : ''}">
+                        <div class="professional-header">
+                            <span class="pair-name">${pair}</span>
+                            <div class="professional-price-info">
+                                <span class="price ${trendClass}">$${data.price.toLocaleString()}</span>
+                                <span class="trend-arrow ${trendClass}">${arrow}</span>
+                                <span class="change-percent ${changeClass}">${changeSign}${data.change}%</span>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <div class="mini-chart"></div>
+                            <div class="chart-placeholder">1分钟K线图<br><small>模拟数据</small></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', cardHTML);
+        }
+
+        // 更新容器高度
+        function updateContainerHeight() {
+            const cardCount = selectedPairs.length;
+            const cardHeight = currentMode === 'simple' ? 52 : 112; // 包含margin
+            const controlBarHeight = 40;
+            const padding = 16; // top + bottom padding
+            
+            const totalHeight = controlBarHeight + padding + (cardCount * cardHeight) - 4; // 减去最后一个margin
+            document.querySelector('.widget-container').style.height = `${totalHeight}px`;
+        }
+
+        // 初始化高度
+        updateContainerHeight();
+
+        // 模拟实时数据更新
+        setInterval(() => {
+            const cards = container.querySelectorAll('.trading-pair-card');
+            cards.forEach(card => {
+                const pair = card.dataset.pair;
+                const data = mockData[pair];
+                
+                // 随机价格波动
+                const change = (Math.random() - 0.5) * 0.02; // ±1%
+                data.price *= (1 + change);
+                data.change += change * 100;
+                data.trend = Math.random() > 0.5 ? 'up' : 'down';
+
+                // 更新显示
+                updateCardDisplay(card, pair, data);
+            });
+        }, 3000);
+
+        // 更新卡片显示
+        function updateCardDisplay(card, pair, data) {
+            const trendClass = data.trend === 'up' ? 'price-up' : 'price-down';
+            const changeClass = data.trend === 'up' ? 'change-up' : 'change-down';
+            const arrow = data.trend === 'up' ? '↗' : '↘';
+            const changeSign = data.change > 0 ? '+' : '';
+
+            // 更新简洁模式
+            const simplePrice = card.querySelector('.simple-content .price');
+            const simpleArrow = card.querySelector('.simple-content .trend-arrow');
+            const simpleChange = card.querySelector('.simple-content .change-percent');
+
+            if (simplePrice) {
+                simplePrice.textContent = `$${data.price.toFixed(2)}`;
+                simplePrice.className = `price ${trendClass}`;
+                simpleArrow.textContent = arrow;
+                simpleArrow.className = `trend-arrow ${trendClass}`;
+                simpleChange.textContent = `${changeSign}${data.change.toFixed(1)}% 24h`;
+                simpleChange.className = `change-percent ${changeClass}`;
+            }
+
+            // 更新专业模式
+            const proPrice = card.querySelector('.professional-content .price');
+            const proArrow = card.querySelector('.professional-content .trend-arrow');
+            const proChange = card.querySelector('.professional-content .change-percent');
+
+            if (proPrice) {
+                proPrice.textContent = `$${data.price.toFixed(2)}`;
+                proPrice.className = `price ${trendClass}`;
+                proArrow.textContent = arrow;
+                proArrow.className = `trend-arrow ${trendClass}`;
+                proChange.textContent = `${changeSign}${data.change.toFixed(1)}%`;
+                proChange.className = `change-percent ${changeClass}`;
+            }
+        }
+    </script>
+</body>
+</html>

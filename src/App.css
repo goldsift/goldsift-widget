@@ -1,0 +1,645 @@
+/* 全局样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden; /* 防止窗口出现滚动条 */
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+/* 主应用容器 */
+.app {
+  width: 280px;
+  background: #fafbfc;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  -webkit-app-region: drag; /* 允许拖拽窗口 */
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* 使用全屏高度 */
+}
+
+/* 缩小状态的应用容器 */
+.app.minimized {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  -webkit-app-region: no-drag; /* 禁用app容器的拖动 */
+}
+
+/* 阻止交互元素拖拽 */
+.control-bar,
+.trading-pair-card,
+button,
+input,
+select {
+  -webkit-app-region: no-drag;
+}
+
+/* 顶部控制栏 */
+.control-bar {
+  height: 40px;
+  background: #ffffff;
+  border-bottom: 1px solid #e8eaed;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+/* 模式切换按钮 */
+.mode-switch {
+  display: flex;
+  background: #f1f3f4;
+  border-radius: 16px;
+  padding: 2px;
+}
+
+.mode-button {
+  padding: 4px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 14px;
+  font-size: 12px;
+  color: #5f6368;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-button.active {
+  background: #1a73e8;
+  color: white;
+}
+
+.mode-button:hover:not(.active) {
+  background: rgba(26, 115, 232, 0.1);
+}
+
+/* 搜索容器 */
+.search-container {
+  flex: 1;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  height: 28px;
+  border: 1px solid #e8eaed;
+  border-radius: 14px;
+  padding: 0 32px 0 12px;
+  font-size: 12px;
+  outline: none;
+  background: #ffffff;
+  transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: #1a73e8;
+}
+
+.search-icon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #5f6368;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* 添加按钮 */
+.add-button,
+.minimize-button,
+.expand-button {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e8eaed;
+  border-radius: 12px;
+  background: white;
+  color: #1a73e8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.2s ease;
+}
+
+.add-button:hover,
+.minimize-button:hover{
+  background: #f8f9fa;
+}
+
+/* 展开按钮的外层拖动包装器 */
+.drag-wrapper {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: drag; /* 允许拖动 */
+
+  transition: all 0.2s ease;
+  background: transparent;
+  position: relative;
+}
+
+/* 展开按钮（圆形B图标） */
+.expand-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #1a73e8;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  border: none;
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  -webkit-app-region: no-drag; /* 禁止拖动，允许点击 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  position: relative;
+}
+
+/* 内圈hover效果 - 按钮的hover状态 */
+.expand-button:hover {
+  background: #1557b0;
+  box-shadow: 0 6px 20px rgba(26, 115, 232, 0.6);
+  transform: scale(1.1);
+}
+
+
+/* 下拉选择器 */
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e8eaed;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 1000;
+  max-height: 62px; /* 只显示约3行数据（每行24px） */
+  overflow-y: auto;
+  overflow-x: hidden; /* 禁止左右滚动条 */
+  display: none;
+}
+
+.dropdown.show {
+  display: block;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #3c4043;
+  border-bottom: 1px solid #f1f3f4;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  white-space: nowrap; /* 防止换行 */
+  overflow: hidden; /* 隐藏超出内容 */
+  text-overflow: ellipsis; /* 显示省略号 */
+}
+
+.dropdown-item.compact {
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #1a73e8;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap; /* 防止换行 */
+  overflow: hidden; /* 隐藏超出内容 */
+  text-overflow: ellipsis; /* 显示省略号 */
+}
+
+.dropdown-item:hover {
+  background: #f8f9fa;
+}
+
+.dropdown-item.error {
+  color: #d93025;
+  cursor: default;
+}
+
+.dropdown-item .pair-symbol {
+  font-weight: 600;
+  color: #1a73e8;
+}
+
+.dropdown-item .pair-name {
+  color: #5f6368;
+  font-size: 11px;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+/* 交易对容器 */
+.trading-pairs-container {
+  padding: 8px;
+  flex: 1; /* 占用剩余空间 */
+  overflow-y: auto; /* 当内容超出时显示垂直滚动条 */
+  overflow-x: hidden; /* 隐藏水平滚动条 */
+}
+
+/* 缩小状态下隐藏交易对容器 */
+.app.minimized .trading-pairs-container {
+  display: none;
+}
+
+/* 交易对卡片 */
+.trading-pair-card {
+  background: white;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  border: 1px solid #e8eaed;
+  padding: 8px 12px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.trading-pair-card:last-child {
+  margin-bottom: 0;
+}
+
+.trading-pair-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* 删除按钮 */
+.delete-button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: #f1f3f4;
+  color: #5f6368;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.delete-button:hover {
+  background: #e8eaed;
+  color: #d93025;
+}
+
+/* 简洁模式样式 */
+.simple-mode .trading-pair-card {
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.simple-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.simple-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #5f6368;
+}
+
+/* 专业模式样式 */
+.professional-mode .trading-pair-card {
+  height: 104px;
+  padding: 8px 12px;
+}
+
+.professional-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.professional-price-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 图表容器 */
+.chart-container {
+  height: 60px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e8eaed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-container.tradingview-chart {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.chart-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #9aa0a6;
+}
+
+.loading-dots {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+
+.loading-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #9aa0a6;
+  animation: loading-dots 1.4s ease-in-out infinite both;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes loading-dots {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+.mini-chart {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, #f8f9fa 25%, transparent 25%), 
+              linear-gradient(-45deg, #f8f9fa 25%, transparent 25%), 
+              linear-gradient(45deg, transparent 75%, #f8f9fa 75%), 
+              linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+  opacity: 0.3;
+}
+
+.chart-placeholder {
+  position: absolute;
+  color: #9aa0a6;
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* 交易对信息样式 */
+.pair-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: #3c4043;
+}
+
+.pair-full-name {
+  font-size: 11px;
+  color: #5f6368;
+}
+
+.price-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.price {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.trend-arrow {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.change-percent {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+/* 价格颜色主题 */
+.price-up, .trend-arrow.price-up {
+  color: #137333;
+}
+
+.price-down, .trend-arrow.price-down {
+  color: #d93025;
+}
+
+.price-neutral, .trend-arrow.price-neutral {
+  color: #3c4043;
+}
+
+.change-up {
+  color: #137333;
+  background: #e6f4ea;
+}
+
+.change-down {
+  color: #d93025;
+  background: #fce8e6;
+}
+
+.change-neutral {
+  color: #5f6368;
+  background: #f1f3f4;
+}
+
+/* 加载状态 */
+.loading-card {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  opacity: 0.7;
+}
+
+.loading-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.loading-text {
+  font-size: 11px;
+  color: #9aa0a6;
+}
+
+/* 动画效果 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading-text {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* 响应式调整 */
+@media (max-width: 300px) {
+  .app {
+    width: 100%;
+  }
+  
+  .control-bar {
+    padding: 0 8px;
+  }
+  
+  .pair-name {
+    font-size: 12px;
+  }
+  
+  .price {
+    font-size: 12px;
+  }
+}
+
+/* 滚动条样式 */
+.dropdown::-webkit-scrollbar,
+.trading-pairs-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown::-webkit-scrollbar-track,
+.trading-pairs-container::-webkit-scrollbar-track {
+  background: #f1f3f4;
+}
+
+.dropdown::-webkit-scrollbar-thumb,
+.trading-pairs-container::-webkit-scrollbar-thumb {
+  background: #bdc1c6;
+  border-radius: 3px;
+}
+
+.dropdown::-webkit-scrollbar-thumb:hover,
+.trading-pairs-container::-webkit-scrollbar-thumb:hover {
+  background: #9aa0a6;
+}
+
+/* 焦点和选择状态 */
+.trading-pair-card:focus-within {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+/* 过渡动画 */
+.simple-mode .trading-pair-card,
+.professional-mode .trading-pair-card {
+  transition: height 0.3s ease, padding 0.3s ease;
+}
+
+.simple-content,
+.professional-content {
+  transition: opacity 0.2s ease;
+}
+
+/* 深色模式支持（预留） */
+@media (prefers-color-scheme: dark) {
+  .app {
+    background: #202124;
+  }
+  
+  .control-bar {
+    background: #292a2d;
+    border-bottom-color: #3c4043;
+  }
+  
+  .trading-pair-card {
+    background: #292a2d;
+    border-color: #3c4043;
+  }
+  
+  .pair-name {
+    color: #e8eaed;
+  }
+  
+  .search-input {
+    background: #3c4043;
+    border-color: #5f6368;
+    color: #e8eaed;
+  }
+  
+  .dropdown {
+    background: #292a2d;
+    border-color: #3c4043;
+  }
+  
+  .dropdown-item {
+    color: #e8eaed;
+    border-bottom-color: #3c4043;
+  }
+  
+  .dropdown-item.compact {
+    color: #8ab4f8;
+  }
+  
+  .dropdown-item:hover {
+    background: #3c4043;
+  }
+  
+  .dropdown-item .pair-symbol {
+    color: #8ab4f8;
+  }
+  
+  .dropdown-item .pair-name {
+    color: #9aa0a6;
+  }
+  
+  .dropdown-item.error {
+    color: #f28b82;
+  }
+}

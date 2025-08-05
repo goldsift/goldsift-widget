@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SVG to Canvas Converter</title>
+</head>
+<body>
+<div id="container">
+    <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" id="svg-icon">
+      <defs>
+        <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#F0B90B;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#D4A324;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      
+      <!-- 圆形背景 -->
+      <circle cx="256" cy="256" r="240" fill="url(#goldGradient)" stroke="#B8860B" stroke-width="4"/>
+      
+      <!-- 字母B -->
+      <path d="M180 140 L180 372 L300 372 C330 372 350 360 350 340 C350 325 340 315 325 310 C340 305 350 295 350 280 C350 260 330 248 300 248 L180 248 L180 140 Z
+               M220 180 L220 220 L280 220 C295 220 310 225 310 240 C310 255 295 260 280 260 L220 260 L220 300 L290 300 C305 300 320 305 320 320 C320 335 305 340 290 340 L220 340 L220 180 Z" 
+            fill="white" 
+            stroke="none"/>
+      
+      <!-- 内部阴影效果 -->
+      <circle cx="256" cy="256" r="240" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="2" opacity="0.3"/>
+    </svg>
+</div>
+
+<canvas id="canvas" width="512" height="512" style="display:none;"></canvas>
+
+<script>
+function downloadPNG() {
+    const svg = document.getElementById('svg-icon');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    const data = new XMLSerializer().serializeToString(svg);
+    const DOMURL = window.URL || window.webkitURL || window;
+    const img = new Image();
+    const svgBlob = new Blob([data], {type: 'image/svg+xml;charset=utf-8'});
+    const url = DOMURL.createObjectURL(svgBlob);
+    
+    img.onload = function () {
+        ctx.drawImage(img, 0, 0);
+        DOMURL.revokeObjectURL(url);
+        
+        canvas.toBlob(function(blob) {
+            const link = document.createElement('a');
+            link.download = 'icon-512.png';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        });
+    };
+    
+    img.src = url;
+}
+
+// 自动下载
+setTimeout(downloadPNG, 100);
+</script>
+
+<p>Click to download: <button onclick="downloadPNG()">Download PNG</button></p>
+</body>
+</html>
