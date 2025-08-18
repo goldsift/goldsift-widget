@@ -308,7 +308,19 @@ export const TradingPairCard = ({
 
   if (!priceData) {
     return (
-      <div className="trading-pair-card loading-card">
+      <div 
+        className="trading-pair-card loading-card"
+        onMouseEnter={() => setShowDelete(true)}
+        onMouseLeave={() => setShowDelete(false)}
+      >
+        {showDelete && (
+          <button 
+            className="delete-button"
+            onClick={() => onRemove(pair)}
+          >
+            ×
+          </button>
+        )}
         <div className="loading-content">
           <span className="pair-name">{pair}</span>
           <span className="loading-text">连接中...</span>
