@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import './App.css';
-import { useWebSocket, useAppSettings, useWindowManager } from './hooks';
+import { useWebSocket, useAppSettings, useWindowManager, useBinanceTradingPairs } from './hooks';
 import { ControlBar, TradingPairCard } from './components';
 import { usePerformanceOptimization } from './utils/performance';
 
@@ -20,7 +20,8 @@ const AVAILABLE_PAIRS = [
 
 function App() {
   const { settings, updateSetting, isLoading } = useAppSettings();
-  const { priceData, connectionStatus, isConnected } = useWebSocket(settings.selectedPairs);
+  const { allPairs } = useBinanceTradingPairs();
+  const { priceData, connectionStatus, isConnected } = useWebSocket(settings.selectedPairs, allPairs);
   const { windowSize } = useWindowManager(settings.selectedPairs, settings.mode);
   const { trackRender } = usePerformanceOptimization();
   const [isMinimized, setIsMinimized] = React.useState(false);
@@ -155,16 +156,23 @@ function App() {
 
       {/* 交易对展示区域 */}
       <div className={`trading-pairs-container ${settings.mode}-mode`}>
-        {settings.selectedPairs.map(pair => (
-          <TradingPairCard
-            key={pair}
-            pair={pair}
-            priceData={priceData.get(pair)}
-            isConnected={isConnected(pair)}
-            mode={settings.mode}
-            onRemove={handleRemovePair}
-          />
-        ))}
+        {settings.selectedPairs.map(pair => {
+          // 从allPairs中找到对应的交易对信息获取类型
+          const pairInfo = allPairs.find(p => p.symbol === pair);
+          const pairType = pairInfo?.type || 'spot';
+          
+          return (
+            <TradingPairCard
+              key={pair}
+              pair={pair}
+              priceData={priceData.get(pair)}
+              isConnected={isConnected(pair)}
+              mode={settings.mode}
+              onRemove={handleRemovePair}
+              pairType={pairType}
+            />
+          );
+        })}
         
         {/* 空状态提示 */}
         {settings.selectedPairs.length === 0 && (

@@ -15,8 +15,117 @@ export const useBinanceTradingPairs = () => {
   // 缓存有效期：10分钟
   const CACHE_DURATION = 10 * 60 * 1000;
 
-  const fetchTradingPairs = useCallback(async (forceRefresh = false) => {
+  // 获取现货交易对（不包含Alpha）
+  const fetchSpotPairs = async () => {
+    console.log('[TradingPairs] Fetching spot pairs...');
+    const response = await fetch('https://api.binance.com/api/v3/exchangeInfo');
+    if (!response.ok) {
+      throw new Error(`Spot API error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    console.log('[TradingPairs] Spot pairs response:', data.symbols?.length, 'symbols');
     
+    const allSymbols = data.symbols || [];
+    const tradingSymbols = allSymbols.filter(symbol => symbol.status === 'TRADING');
+    const usdtSymbols = tradingSymbols.filter(symbol => symbol.quoteAsset === 'USDT');
+    
+    // 只返回普通现货交易对，不包含Alpha
+    const spotPairs = usdtSymbols.map(symbol => ({
+      symbol: `${symbol.baseAsset}/USDT`,
+      name: getTokenName(symbol.baseAsset),
+      baseAsset: symbol.baseAsset,
+      quoteAsset: symbol.quoteAsset,
+      type: 'spot',
+      volume: 0,
+      originalSymbol: symbol.symbol
+    }));
+    
+    return spotPairs;
+  };
+
+  // 获取Alpha交易对
+  const fetchAlphaPairs = async () => {
+    console.log('[TradingPairs] Fetching alpha pairs...');
+    const response = await fetch('https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list', {
+      headers: {
+        'Accept-Encoding': 'gzip, deflate',
+        'User-Agent': 'Mozilla/5.0'
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Alpha API error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    
+    if (data.code !== '000000') {
+      throw new Error(`Alpha API response error: ${data.code}`);
+    }
+    
+    console.log('[TradingPairs] Alpha tokens response:', data.data?.length, 'tokens');
+    
+    const tokens = data.data || [];
+    
+    const alphaPairs = tokens.map(token => {
+      return {
+        symbol: `${token.symbol}/USDT`,
+        name: token.name || token.symbol,
+        baseAsset: token.symbol,
+        quoteAsset: 'USDT',
+        type: 'alpha',
+        volume: parseFloat(token.volume24h) || 0,
+        originalSymbol: token.alphaId, // 使用alphaId作为原始标识
+        price: parseFloat(token.price) || 0,
+        change24h: parseFloat(token.percentChange24h) || 0,
+        marketCap: parseFloat(token.marketCap) || 0,
+        tokenId: token.tokenId
+      };
+    });
+    
+    console.log('[TradingPairs] Alpha pairs processed:', alphaPairs.length);
+    
+    return alphaPairs;
+  };
+
+  // 获取U本位合约交易对
+  const fetchFuturesPairs = async () => {
+    console.log('[TradingPairs] Fetching futures pairs...');
+    const response = await fetch('https://fapi.binance.com/fapi/v1/exchangeInfo');
+    if (!response.ok) {
+      throw new Error(`Futures API error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    console.log('[TradingPairs] Futures pairs response:', data.symbols?.length, 'symbols');
+    
+    const allSymbols = data.symbols || [];
+    const tradingSymbols = allSymbols.filter(symbol => symbol.status === 'TRADING');
+    const usdtSymbols = tradingSymbols.filter(symbol => symbol.quoteAsset === 'USDT');
+    
+    // 只保留永续合约，严格按照contractType过滤
+    const perpetualSymbols = usdtSymbols.filter(symbol => {
+      return symbol.contractType === 'PERPETUAL';
+    });
+    
+    console.log('[TradingPairs] Filtered perpetual contracts:', perpetualSymbols.length, 'from', usdtSymbols.length, 'total USDT symbols');
+    
+    const futuresPairs = perpetualSymbols.map(symbol => ({
+      symbol: `${symbol.baseAsset}/USDT`,
+      name: getTokenName(symbol.baseAsset),
+      baseAsset: symbol.baseAsset,
+      quoteAsset: symbol.quoteAsset,
+      type: 'futures',
+      volume: 0,
+      originalSymbol: symbol.symbol,
+      contractType: symbol.contractType || 'PERPETUAL'
+    }));
+    
+    // 调试：检查ETH相关的合约（应该只有1个了）
+    const ethFutures = futuresPairs.filter(p => p.baseAsset === 'ETH');
+    console.log('[TradingPairs] ETH futures after deduplication:', ethFutures.length, ethFutures);
+    
+    return futuresPairs;
+  };
+
+  const fetchTradingPairs = useCallback(async (forceRefresh = false) => {
     // 检查缓存
     if (!forceRefresh && cacheRef.current && lastFetch) {
       const isExpired = Date.now() - lastFetch > CACHE_DURATION;
@@ -31,59 +140,48 @@ export const useBinanceTradingPairs = () => {
     setError(null);
 
     try {
-      const response = await fetch('https://api.binance.com/api/v3/exchangeInfo');
+      // 并行获取现货、合约和Alpha数据
+      const [spotPairs, futuresPairs, alphaPairs] = await Promise.all([
+        fetchSpotPairs(),
+        fetchFuturesPairs(),
+        fetchAlphaPairs().catch(error => {
+          console.warn('[TradingPairs] Alpha API failed, continuing without Alpha pairs:', error.message);
+          return []; // 如果Alpha API失败，返回空数组，不影响其他数据
+        })
+      ]);
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      // 合并所有交易对
+      const allTradingPairs = [...spotPairs, ...futuresPairs, ...alphaPairs];
       
-      const data = await response.json();
-      
-      // 过滤出活跃的USDT交易对，并格式化
-      const allSymbols = data.symbols || [];
-      
-      // 先检查一些样例数据的结构
-      
-      const tradingSymbols = allSymbols.filter(symbol => symbol.status === 'TRADING');
-      
-      const usdtSymbols = tradingSymbols.filter(symbol => symbol.quoteAsset === 'USDT');
-      
-      // 检查 permissions 字段的结构
-      
-      // 暂时跳过 SPOT permissions 过滤，直接使用 USDT 交易对
-      const spotSymbols = usdtSymbols; // 暂时不过滤 permissions
-      
-      const usdtPairs = spotSymbols
-        .map(symbol => ({
-          symbol: `${symbol.baseAsset}/USDT`,
-          name: getTokenName(symbol.baseAsset),
-          baseAsset: symbol.baseAsset,
-          quoteAsset: symbol.quoteAsset,
-          volume: 0 // 可以后续通过24h ticker获取
-        }))
-        .sort((a, b) => {
-          // 优先显示主流币种
-          const mainCoins = ['BTC', 'ETH', 'BNB', 'ADA', 'XRP', 'SOL', 'DOT', 'AVAX', 'MATIC', 'LINK'];
-          const aIndex = mainCoins.indexOf(a.baseAsset);
-          const bIndex = mainCoins.indexOf(b.baseAsset);
-          
-          if (aIndex !== -1 && bIndex !== -1) {
-            return aIndex - bIndex;
-          }
-          if (aIndex !== -1) return -1;
-          if (bIndex !== -1) return 1;
-          
-          // 其他按字母排序
-          return a.symbol.localeCompare(b.symbol);
-        });
+      // 按类型和主流币种排序
+      const sortedPairs = allTradingPairs.sort((a, b) => {
+        // 首先按类型排序：spot -> futures -> alpha
+        const typeOrder = { spot: 0, futures: 1, alpha: 2 };
+        if (typeOrder[a.type] !== typeOrder[b.type]) {
+          return typeOrder[a.type] - typeOrder[b.type];
+        }
+        
+        // 同类型内按主流币种优先排序
+        const mainCoins = ['BTC', 'ETH', 'BNB', 'ADA', 'XRP', 'SOL', 'DOT', 'AVAX', 'MATIC', 'LINK'];
+        const aIndex = mainCoins.indexOf(a.baseAsset);
+        const bIndex = mainCoins.indexOf(b.baseAsset);
+        
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex;
+        }
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        
+        // 其他按字母排序
+        return a.symbol.localeCompare(b.symbol);
+      });
 
-      
-      setAllPairs(usdtPairs);
-      cacheRef.current = usdtPairs;
+      setAllPairs(sortedPairs);
+      cacheRef.current = sortedPairs;
       setLastFetch(Date.now());
       setLoading(false);
       
-      return usdtPairs;
+      return sortedPairs;
       
     } catch (err) {
       console.error('[TradingPairs] Error fetching trading pairs:', err);
@@ -105,20 +203,27 @@ export const useBinanceTradingPairs = () => {
     fetchTradingPairs();
   }, []); // 移除依赖，避免循环
 
-  // 搜索功能
-  const searchPairs = useCallback((query, excludePairs = []) => {
+  // 搜索功能 - 支持类型过滤
+  const searchPairs = useCallback((query, excludePairs = [], typeFilter = null) => {
+    let filteredPairs = allPairs.filter(pair => !excludePairs.includes(pair.symbol));
+    
+    // 按类型过滤
+    if (typeFilter) {
+      filteredPairs = filteredPairs.filter(pair => pair.type === typeFilter);
+    }
+    
     if (!query.trim()) {
-      return allPairs.filter(pair => !excludePairs.includes(pair.symbol)).slice(0, 50); // 限制50个结果
+      return filteredPairs.slice(0, 50); // 限制50个结果
     }
     
     const lowercaseQuery = query.toLowerCase();
     
-    return allPairs
-      .filter(pair => !excludePairs.includes(pair.symbol))
+    return filteredPairs
       .filter(pair =>
         pair.symbol.toLowerCase().includes(lowercaseQuery) ||
         pair.name.toLowerCase().includes(lowercaseQuery) ||
-        pair.baseAsset.toLowerCase().includes(lowercaseQuery)
+        pair.baseAsset.toLowerCase().includes(lowercaseQuery) ||
+        pair.type.toLowerCase().includes(lowercaseQuery)
       )
       .slice(0, 20); // 搜索结果限制20个
   }, [allPairs]);
@@ -329,7 +434,7 @@ export const useKlineWebSocket = (symbol, interval = '1m') => {
 };
 
 // WebSocket连接管理Hook
-export const useWebSocket = (selectedPairs) => {
+export const useWebSocket = (selectedPairs, allPairs = []) => {
   const [connections, setConnections] = useState(new Map());
   const [priceData, setPriceData] = useState(new Map());
   const [connectionStatus, setConnectionStatus] = useState(new Map());
@@ -421,14 +526,50 @@ export const useWebSocket = (selectedPairs) => {
   }, [throttledPriceUpdate, selectedPairs, maxReconnectAttempts]);
 
   const createConnection = useCallback((symbol) => {
-    // 将 "BTC/USDT" 格式转换为 "btcusdt" 格式
-    const binanceSymbol = symbol.replace('/', '').toLowerCase();
-    const url = `wss://stream.binance.com:9443/ws/${binanceSymbol}@ticker`;
+    // 从allPairs中找到对应的交易对信息获取类型
+    const pairInfo = allPairs.find(pair => pair.symbol === symbol);
+    const pairType = pairInfo?.type || 'spot';
+    
+    // 根据交易对类型生成WebSocket符号
+    let wsSymbol;
+    let url;
+    
+    switch (pairType) {
+      case 'futures':
+        // 将 "BTC/USDT" 格式转换为 "btcusdt" 格式
+        wsSymbol = symbol.replace('/', '').toLowerCase();
+        url = `wss://fstream.binance.com/ws/${wsSymbol}@ticker`;
+        break;
+        
+      case 'alpha':
+        // Alpha交易对使用原始的symbol格式，如 "ALPHA_105USDT"
+        const originalSymbol = pairInfo?.originalSymbol;
+        if (originalSymbol) {
+          wsSymbol = originalSymbol.toLowerCase();
+          // Alpha交易对可能使用不同的WebSocket端点，先尝试标准端点
+          url = `wss://stream.binance.com:9443/ws/${wsSymbol}@ticker`;
+        } else {
+          console.warn(`[WebSocket] No original symbol found for alpha pair: ${symbol}`);
+          // 降级到现货端点
+          wsSymbol = symbol.replace('/', '').toLowerCase();
+          url = `wss://stream.binance.com:9443/ws/${wsSymbol}@ticker`;
+        }
+        break;
+        
+      case 'spot':
+      default:
+        // 将 "BTC/USDT" 格式转换为 "btcusdt" 格式
+        wsSymbol = symbol.replace('/', '').toLowerCase();
+        url = `wss://stream.binance.com:9443/ws/${wsSymbol}@ticker`;
+        break;
+    }
+    
+    console.log(`[WebSocket] Creating ${pairType} connection for ${symbol} (${wsSymbol}): ${url}`);
     
     const ws = new WebSocket(url);
     setupWebSocketHandlers(ws, symbol);
     return ws;
-  }, [setupWebSocketHandlers]);
+  }, [setupWebSocketHandlers, allPairs]);
 
   const closeConnection = useCallback((symbol) => {
     const ws = connections.get(symbol);

@@ -15,11 +15,12 @@ html, body {
 
 /* 主应用容器 */
 .app {
+  position: relative; /* 添加相对定位，作为dropdown的定位参考 */
   width: 280px;
   background: #fafbfc;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  overflow: hidden;
+  overflow: hidden; /* 恢复hidden确保圆角效果 */
   transition: all 0.3s ease;
   -webkit-app-region: drag; /* 允许拖拽窗口 */
   display: flex;
@@ -192,18 +193,20 @@ select {
 /* 下拉选择器 */
 .dropdown {
   position: absolute;
-  top: 100%;
+  top: 40px; /* 从控制栏下方开始 */
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid #e8eaed;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  bottom: 0; /* 延伸到容器底部 */
+  background: white; /* 恢复正常白色背景 */
+  border: none; /* 移除调试边框 */
+  border-radius: 0 0 8px 8px; /* 只保留底部圆角，与app容器匹配 */
+  box-shadow: 0 -2px 4px rgba(0,0,0,0.05); /* 顶部轻微阴影 */
   z-index: 1000;
-  max-height: 62px; /* 只显示约3行数据（每行24px） */
   overflow-y: auto;
-  overflow-x: hidden; /* 禁止左右滚动条 */
+  overflow-x: hidden;
   display: none;
+  -webkit-app-region: no-drag; /* 确保点击事件可以触发 */
+  pointer-events: auto; /* 明确启用点击事件 */
 }
 
 .dropdown.show {
@@ -226,16 +229,21 @@ select {
 }
 
 .dropdown-item.compact {
-  padding: 4px 12px;
-  font-size: 11px;
+  padding: 8px 16px;
+  font-size: 13px;
   font-weight: 500;
   color: #1a73e8;
-  min-height: 24px;
+  min-height: 32px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   white-space: nowrap; /* 防止换行 */
   overflow: hidden; /* 隐藏超出内容 */
   text-overflow: ellipsis; /* 显示省略号 */
+  border-bottom: 1px solid #f1f3f4;
+  cursor: pointer;
+  -webkit-app-region: no-drag; /* 确保点击事件可以触发 */
+  pointer-events: auto; /* 明确启用点击事件 */
 }
 
 .dropdown-item:hover {
@@ -261,12 +269,97 @@ select {
   border-bottom: none;
 }
 
+/* 类型过滤器样式 */
+.type-filters {
+  display: flex;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e8e8e8;
+  gap: 8px;
+  background: #f8f9fa;
+  -webkit-app-region: no-drag; /* 确保点击事件可以触发 */
+}
+
+.type-filter {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  text-align: center;
+  min-width: 50px;
+  font-weight: 500;
+  -webkit-app-region: no-drag; /* 确保点击事件可以触发 */
+  pointer-events: auto; /* 明确启用点击事件 */
+}
+
+.type-filter:hover {
+  background: #e6f7ff;
+  color: #1890ff;
+  border-color: #1890ff;
+}
+
+.type-filter.active {
+  background: #1890ff;
+  color: white;
+  border-color: #1890ff;
+}
+
+/* 类型标识样式 */
+.type-badge {
+  display: inline-block;
+  color: white;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 2px 4px;
+  border-radius: 3px;
+  min-width: 14px;
+  text-align: center;
+  line-height: 1;
+  margin-left: 4px;
+}
+
+.type-badge.small {
+  font-size: 8px;
+  padding: 1px 3px;
+  min-width: 12px;
+}
+
+/* 交易对名称部分样式 */
+.pair-name-section {
+  display: flex;
+  align-items: center;
+}
+
+.dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dropdown-item .pair-symbol {
+  flex: 1;
+  margin-right: 8px;
+}
+
+.dropdown-item .type-badge {
+  flex-shrink: 0;
+}
+
 /* 交易对容器 */
 .trading-pairs-container {
   padding: 8px;
   flex: 1; /* 占用剩余空间 */
   overflow-y: auto; /* 当内容超出时显示垂直滚动条 */
   overflow-x: hidden; /* 隐藏水平滚动条 */
+}
+
+/* 当搜索下拉框显示时，隐藏交易对容器 */
+.app.dropdown-open .trading-pairs-container {
+  display: none;
 }
 
 /* 缩小状态下隐藏交易对容器 */
