@@ -3,14 +3,14 @@ import { createChart, CandlestickSeries } from 'lightweight-charts';
 import { useKlineWebSocket } from '../hooks';
 
 // K线图组件 - 使用TradingView轻量级图表
-export const CandlestickChart = ({ symbol, priceData }) => {
+export const CandlestickChart = ({ symbol, priceData, pairType = 'spot' }) => {
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const candlestickSeriesRef = useRef(null);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // 使用K线WebSocket获取真实数据
-  const { klineData, isConnected: isKlineConnected, isHistoryLoaded, lastUpdateType } = useKlineWebSocket(symbol, '1m');
+  // 使用K线WebSocket获取真实数据，传入pairType参数
+  const { klineData, isConnected: isKlineConnected, isHistoryLoaded, lastUpdateType } = useKlineWebSocket(symbol, '1m', pairType);
 
   // 初始化图表 - 只在组件挂载或symbol变化时初始化一次
   useEffect(() => {

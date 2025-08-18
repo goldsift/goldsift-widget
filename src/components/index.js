@@ -120,8 +120,9 @@ export const SearchDropdown = ({ onAddPair, selectedPairs }) => {
   };
 
   const handleSelectPair = (pair) => {
-    console.log('[SearchDropdown] Selecting pair:', pair.symbol);
-    onAddPair(pair.symbol);
+    console.log('[SearchDropdown] Selecting pair:', pair.symbol, 'Type:', pair.type);
+    // 传递完整的pair对象，包含类型信息
+    onAddPair(pair);
     setSearchQuery('');
     setIsOpen(false);
   };
@@ -173,7 +174,7 @@ export const SearchDropdown = ({ onAddPair, selectedPairs }) => {
           className="dropdown show" 
           ref={dropdownRef}
         >
-          {/* 类型过滤器 */}
+          {/* 类型过滤器（暂时隐藏Alpha） */}
           <div className="type-filters">
             <button 
               className={`type-filter ${typeFilter === null ? 'active' : ''}`}
@@ -208,6 +209,8 @@ export const SearchDropdown = ({ onAddPair, selectedPairs }) => {
             >
               合约
             </button>
+            {/* 暂时隐藏Alpha按钮 */}
+            {/*
             <button 
               className={`type-filter ${typeFilter === 'alpha' ? 'active' : ''}`}
               onClick={(e) => {
@@ -219,6 +222,7 @@ export const SearchDropdown = ({ onAddPair, selectedPairs }) => {
             >
               Alpha
             </button>
+            */}
           </div>
           
           {error ? (
@@ -354,6 +358,7 @@ export const TradingPairCard = ({
           changeClass={changeClass}
           arrow={arrow}
           typeInfo={typeInfo}
+          pairType={pairType}
         />
       )}
     </div>
@@ -390,8 +395,8 @@ const SimpleCardContent = ({ pair, priceData, trendClass, changeClass, arrow, ty
   </div>
 );
 
-// 专业模式卡片内容
-const ProfessionalCardContent = ({ pair, priceData, trendClass, changeClass, arrow, typeInfo }) => (
+// 专业模式卡片内容  
+const ProfessionalCardContent = ({ pair, priceData, trendClass, changeClass, arrow, typeInfo, pairType }) => (
   <div className="professional-content">
     <div className="professional-header">
       <div className="pair-name-section">
@@ -414,7 +419,7 @@ const ProfessionalCardContent = ({ pair, priceData, trendClass, changeClass, arr
         </span>
       </div>
     </div>
-    <CandlestickChart symbol={pair} priceData={priceData} />
+    <CandlestickChart symbol={pair} priceData={priceData} pairType={pairType} />
   </div>
 );
 

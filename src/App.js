@@ -76,19 +76,47 @@ function App() {
     }
   };
 
-  // 添加交易对
-  const handleAddPair = (pairSymbol) => {
-    if (!settings.selectedPairs.includes(pairSymbol)) {
-      const newPairs = [...settings.selectedPairs, pairSymbol];
+  // 添加交易对 - 支持传入pair对象或symbol字符串，避免重复添加
+  const handleAddPair = (pairInput) => {
+    let pairId, pairData;
+    
+    if (typeof pairInput === 'string') {
+      // 兼容旧的字符串格式
+      pairId = pairInput;
+      pairData = { symbol: pairInput, type: 'spot' }; // 默认现货
+    } else if (pairInput && pairInput.symbol && pairInput.type) {
+      // 新的对象格式：创建唯一标识符 "symbol:type"
+      pairId = `${pairInput.symbol}:${pairInput.type}`;
+      pairData = pairInput;
+    } else {
+      console.error('Invalid pair input:', pairInput);
+      return;
+    }
+    
+    // 检查是否已经存在相同的symbol+type组合
+    const existingPairIds = settings.selectedPairs.map(id => {
+      if (id.includes(':')) {
+        return id; // 新格式
+      } else {
+        return `${id}:spot`; // 旧格式转换
+      }
+    });
+    
+    if (!existingPairIds.includes(pairId)) {
+      const newPairs = [...settings.selectedPairs, pairId];
       updateSetting('selectedPairs', newPairs);
+      console.log(`[App] Added ${pairData.type} pair: ${pairData.symbol}`);
+    } else {
+      console.log(`[App] Pair already exists: ${pairData.symbol} (${pairData.type})`);
     }
   };
 
   // 移除交易对
-  const handleRemovePair = (pairSymbol) => {
+  const handleRemovePair = (pairId) => {
     if (settings.selectedPairs.length > 1) { // 保证至少有一个交易对
-      const newPairs = settings.selectedPairs.filter(pair => pair !== pairSymbol);
+      const newPairs = settings.selectedPairs.filter(id => id !== pairId);
       updateSetting('selectedPairs', newPairs);
+      console.log(`[App] Removed pair: ${pairId}`);
     }
   };
 
@@ -156,20 +184,25 @@ function App() {
 
       {/* 交易对展示区域 */}
       <div className={`trading-pairs-container ${settings.mode}-mode`}>
-        {settings.selectedPairs.map(pair => {
-          // 从allPairs中找到对应的交易对信息获取类型
-          const pairInfo = allPairs.find(p => p.symbol === pair);
-          const pairType = pairInfo?.type || 'spot';
+        {settings.selectedPairs.map(pairId => {
+          // 解析pairId获取symbol和type
+          let symbol, type;
+          if (pairId.includes(':')) {
+            [symbol, type] = pairId.split(':');
+          } else {
+            symbol = pairId;
+            type = 'spot';
+          }
           
           return (
             <TradingPairCard
-              key={pair}
-              pair={pair}
-              priceData={priceData.get(pair)}
-              isConnected={isConnected(pair)}
+              key={pairId}
+              pair={symbol} // 传递symbol用于显示
+              priceData={priceData.get(pairId)} // 使用pairId获取价格数据
+              isConnected={isConnected(pairId)} // 使用pairId检查连接状态
               mode={settings.mode}
-              onRemove={handleRemovePair}
-              pairType={pairType}
+              onRemove={() => handleRemovePair(pairId)} // 传递pairId进行删除
+              pairType={type} // 直接使用解析出的类型
             />
           );
         })}

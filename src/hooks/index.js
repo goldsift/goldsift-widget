@@ -140,18 +140,18 @@ export const useBinanceTradingPairs = () => {
     setError(null);
 
     try {
-      // 并行获取现货、合约和Alpha数据
-      const [spotPairs, futuresPairs, alphaPairs] = await Promise.all([
+      // 并行获取现货和合约数据（暂时隐藏Alpha）
+      const [spotPairs, futuresPairs] = await Promise.all([
         fetchSpotPairs(),
-        fetchFuturesPairs(),
-        fetchAlphaPairs().catch(error => {
-          console.warn('[TradingPairs] Alpha API failed, continuing without Alpha pairs:', error.message);
-          return []; // 如果Alpha API失败，返回空数组，不影响其他数据
-        })
+        fetchFuturesPairs()
+        // fetchAlphaPairs().catch(error => {
+        //   console.warn('[TradingPairs] Alpha API failed, continuing without Alpha pairs:', error.message);
+        //   return []; // 如果Alpha API失败，返回空数组，不影响其他数据
+        // })
       ]);
       
-      // 合并所有交易对
-      const allTradingPairs = [...spotPairs, ...futuresPairs, ...alphaPairs];
+      // 合并所有交易对（暂时不包含Alpha）
+      const allTradingPairs = [...spotPairs, ...futuresPairs];
       
       // 按类型和主流币种排序
       const sortedPairs = allTradingPairs.sort((a, b) => {
@@ -203,9 +203,9 @@ export const useBinanceTradingPairs = () => {
     fetchTradingPairs();
   }, []); // 移除依赖，避免循环
 
-  // 搜索功能 - 支持类型过滤
+  // 搜索功能 - 支持类型过滤，不过滤重复（让用户看到所有选项）
   const searchPairs = useCallback((query, excludePairs = [], typeFilter = null) => {
-    let filteredPairs = allPairs.filter(pair => !excludePairs.includes(pair.symbol));
+    let filteredPairs = allPairs;
     
     // 按类型过滤
     if (typeFilter) {
@@ -275,7 +275,7 @@ const getTokenName = (baseAsset) => {
 };
 
 // K线数据WebSocket连接Hook
-export const useKlineWebSocket = (symbol, interval = '1m') => {
+export const useKlineWebSocket = (symbol, interval = '1m', pairType = 'spot') => {
   const [klineData, setKlineData] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
@@ -291,10 +291,19 @@ export const useKlineWebSocket = (symbol, interval = '1m') => {
     try {
       const binanceSymbol = symbol.replace('/', '');
       
-      // 币安REST API获取历史K线数据
-      const response = await fetch(
-        `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=30`
-      );
+      // 根据交易对类型选择不同的API端点
+      let apiUrl;
+      if (pairType === 'futures') {
+        // 合约K线API
+        apiUrl = `https://fapi.binance.com/fapi/v1/klines?symbol=${binanceSymbol}&interval=${interval}&limit=30`;
+      } else {
+        // 现货K线API (默认)
+        apiUrl = `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=30`;
+      }
+      
+      console.log(`[Kline] Fetching historical data for ${symbol} (${pairType}):`, apiUrl);
+      
+      const response = await fetch(apiUrl);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -320,14 +329,25 @@ export const useKlineWebSocket = (symbol, interval = '1m') => {
       // 如果获取历史数据失败，仍然标记为已加载，这样WebSocket可以继续工作
       setIsHistoryLoaded(true);
     }
-  }, [symbol, interval]);
+  }, [symbol, interval, pairType]);
 
   const setupKlineWebSocket = useCallback(() => {
     if (!symbol || !isHistoryLoaded) return;
 
     // 将 "BTC/USDT" 格式转换为 "btcusdt" 格式
     const binanceSymbol = symbol.replace('/', '').toLowerCase();
-    const url = `wss://stream.binance.com:9443/ws/${binanceSymbol}@kline_${interval}`;
+    
+    // 根据交易对类型选择不同的WebSocket端点
+    let url;
+    if (pairType === 'futures') {
+      // 合约WebSocket端点
+      url = `wss://fstream.binance.com/ws/${binanceSymbol}@kline_${interval}`;
+    } else {
+      // 现货WebSocket端点 (默认)
+      url = `wss://stream.binance.com:9443/ws/${binanceSymbol}@kline_${interval}`;
+    }
+    
+    console.log(`[Kline] Creating WebSocket connection for ${symbol} (${pairType}):`, url);
     
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -402,7 +422,7 @@ export const useKlineWebSocket = (symbol, interval = '1m') => {
       console.error(`[Kline] WebSocket error for ${symbol}:`, error);
       setConnectionStatus('error');
     };
-  }, [symbol, interval, isHistoryLoaded]);
+  }, [symbol, interval, pairType, isHistoryLoaded]);
 
   // 先获取历史数据，再建立WebSocket连接
   useEffect(() => {
@@ -525,10 +545,34 @@ export const useWebSocket = (selectedPairs, allPairs = []) => {
     };
   }, [throttledPriceUpdate, selectedPairs, maxReconnectAttempts]);
 
-  const createConnection = useCallback((symbol) => {
-    // 从allPairs中找到对应的交易对信息获取类型
-    const pairInfo = allPairs.find(pair => pair.symbol === symbol);
-    const pairType = pairInfo?.type || 'spot';
+  const createConnection = useCallback((pairId) => {
+    // 解析pairId：可能是 "symbol" 或 "symbol:type" 格式
+    let targetSymbol, targetType;
+    
+    if (pairId.includes(':')) {
+      // 新格式 "symbol:type"
+      [targetSymbol, targetType] = pairId.split(':');
+    } else {
+      // 旧格式，只有symbol，默认为spot
+      targetSymbol = pairId;
+      targetType = 'spot';
+    }
+    
+    // 从allPairs中找到指定的交易对
+    const pairInfo = allPairs.find(pair => 
+      pair.symbol === targetSymbol && pair.type === targetType
+    );
+    
+    const pairType = pairInfo?.type || targetType;
+    
+    // 调试信息：显示交易对类型判断
+    console.log(`[WebSocket] Creating connection for ${pairId}:`, {
+      parsedSymbol: targetSymbol,
+      parsedType: targetType,
+      pairInfo: pairInfo ? { symbol: pairInfo.symbol, type: pairInfo.type, originalSymbol: pairInfo.originalSymbol } : null,
+      detectedType: pairType,
+      allPairsCount: allPairs.length
+    });
     
     // 根据交易对类型生成WebSocket符号
     let wsSymbol;
@@ -537,37 +581,37 @@ export const useWebSocket = (selectedPairs, allPairs = []) => {
     switch (pairType) {
       case 'futures':
         // 将 "BTC/USDT" 格式转换为 "btcusdt" 格式
-        wsSymbol = symbol.replace('/', '').toLowerCase();
+        wsSymbol = targetSymbol.replace('/', '').toLowerCase();
         url = `wss://fstream.binance.com/ws/${wsSymbol}@ticker`;
         break;
         
-      case 'alpha':
-        // Alpha交易对使用原始的symbol格式，如 "ALPHA_105USDT"
-        const originalSymbol = pairInfo?.originalSymbol;
-        if (originalSymbol) {
-          wsSymbol = originalSymbol.toLowerCase();
-          // Alpha交易对可能使用不同的WebSocket端点，先尝试标准端点
-          url = `wss://stream.binance.com:9443/ws/${wsSymbol}@ticker`;
-        } else {
-          console.warn(`[WebSocket] No original symbol found for alpha pair: ${symbol}`);
-          // 降级到现货端点
-          wsSymbol = symbol.replace('/', '').toLowerCase();
-          url = `wss://stream.binance.com:9443/ws/${wsSymbol}@ticker`;
-        }
-        break;
+      // case 'alpha':
+      //   // Alpha交易对使用原始的symbol格式，如 "ALPHA_105USDT"
+      //   const originalSymbol = pairInfo?.originalSymbol;
+      //   if (originalSymbol) {
+      //     wsSymbol = originalSymbol.toLowerCase();
+      //     // Alpha交易对可能使用不同的WebSocket端点，先尝试标准端点
+      //     url = `wss://stream.binance.com:9443/ws/${wsSymbol}@ticker`;
+      //   } else {
+      //     console.warn(`[WebSocket] No original symbol found for alpha pair: ${targetSymbol}`);
+      //     // 降级到现货端点
+      //     wsSymbol = targetSymbol.replace('/', '').toLowerCase();
+      //     url = `wss://stream.binance.com:9443/ws/${wsSymbol}@ticker`;
+      //   }
+      //   break;
         
       case 'spot':
       default:
         // 将 "BTC/USDT" 格式转换为 "btcusdt" 格式
-        wsSymbol = symbol.replace('/', '').toLowerCase();
+        wsSymbol = targetSymbol.replace('/', '').toLowerCase();
         url = `wss://stream.binance.com:9443/ws/${wsSymbol}@ticker`;
         break;
     }
     
-    console.log(`[WebSocket] Creating ${pairType} connection for ${symbol} (${wsSymbol}): ${url}`);
+    console.log(`[WebSocket] Final connection: ${pairType} -> ${targetSymbol} (${wsSymbol}): ${url}`);
     
     const ws = new WebSocket(url);
-    setupWebSocketHandlers(ws, symbol);
+    setupWebSocketHandlers(ws, pairId); // 传递pairId作为标识
     return ws;
   }, [setupWebSocketHandlers, allPairs]);
 
@@ -595,21 +639,27 @@ export const useWebSocket = (selectedPairs, allPairs = []) => {
 
   // 管理多个交易对的连接
   useEffect(() => {
+    // 确保allPairs数据已加载才创建连接
+    if (allPairs.length === 0) {
+      console.log('[WebSocket] Waiting for allPairs data to load...');
+      return;
+    }
+
     // 添加新的连接
-    selectedPairs.forEach(symbol => {
-      if (!connections.has(symbol)) {
-        const ws = createConnection(symbol);
-        setConnections(prev => new Map(prev.set(symbol, ws)));
+    selectedPairs.forEach(pairId => {
+      if (!connections.has(pairId)) {
+        const ws = createConnection(pairId);
+        setConnections(prev => new Map(prev.set(pairId, ws)));
       }
     });
 
     // 关闭不需要的连接
-    connections.forEach((ws, symbol) => {
-      if (!selectedPairs.includes(symbol)) {
-        closeConnection(symbol);
+    connections.forEach((ws, pairId) => {
+      if (!selectedPairs.includes(pairId)) {
+        closeConnection(pairId);
       }
     });
-  }, [selectedPairs, connections, createConnection, closeConnection]);
+  }, [selectedPairs, connections, createConnection, closeConnection, allPairs.length]);
 
   // 清理所有连接
   useEffect(() => {
